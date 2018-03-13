@@ -15,7 +15,7 @@ import java.io.UnsupportedEncodingException;
  */
 public class VideoAsyncScanResultsTest extends VideoAsyncScanBase {
 
-    private String taskId = "vi2XufoU4kksL61Nr4riVvpm-1oxVJl";
+    private String taskId = "vi4nwZFEfukSF6d826ayxGSO-1oxV@D";
 
     @Test
     public void test() throws UnsupportedEncodingException {

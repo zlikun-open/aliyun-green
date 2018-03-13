@@ -17,7 +17,8 @@ import java.util.*;
  */
 public class VideoAsyncScanRequestTest extends VideoAsyncScanBase {
 
-    private String videoUrl = "http://alivideo.zhihuishu.com/testzhs/createcourse/COURSE/201703/e56d9e7143994de2aa153c78963f75af_500.mp4";
+    private String prefix = "http://alivideo.zhihuishu.com/";
+    private String videoUrl = prefix + "zhs/ablecommons/demo/201803/d2dd5a0a980e476994f9616b801d81c1_512.mp4";
 
     @Test
     public void test() throws UnsupportedEncodingException {
