@@ -1,12 +1,14 @@
 package com.zlikun.open;
 
 import com.alibaba.fastjson.JSON;
+import com.zlikun.open.consts.AppConstants;
 import com.zlikun.open.helper.HmacSHA1Helper;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.junit.Test;
 
+import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -27,7 +29,7 @@ public class PornVideoTest {
     @Test
     public void test() throws Exception {
 
-        final String apiUrl = "https://green.cn-shanghai.aliyuncs.com/green/video/asyncscan";
+        final String apiUrl = "https://green.cn-hangzhou.aliyuncs.com/green/video/asyncscan";
 
         // 构建鉴黄请求参数
         List<Map<String, Object>> list = new ArrayList<>();
@@ -35,7 +37,7 @@ public class PornVideoTest {
         // 调用者通常保证一次请求中，所有的dataId不重复
         data.put("dataId", "v0000001");
         // 视频地址，和frames不能同时为空，也不能同时有值，传入本字段将按照传url的方式计费
-        data.put("url", "http://alivideo.zhihuishu.com/zhs/createcourse/course_second/201803/4518adbea7cc4c1eb5c5c698dfebcf0c_512.mp4");
+        data.put("url", "http://oss-cn-hangzhou-internal.aliyuncs.com/zhs/createcourse/course_second/201803/4518adbea7cc4c1eb5c5c698dfebcf0c_512.mp4");
         // 视频截帧间隔，单位秒；取值范围为[1, 60]; 默认为1秒
         data.put("interval", 5);
         // 截帧最多张数；取值范围为[5, 200]; 默认为200张。当用OSS地址（以”oss://“开头）时，最大允许张数为20000张
@@ -64,7 +66,9 @@ public class PornVideoTest {
 
         // 下面是公共请求头
         // https://help.aliyun.com/document_detail/53413.html
-        String dateString = LocalDateTime.now().format(DateTimeFormatter.ofPattern("EEE, d MMM yyyy HH:mm:ss 'GMT'", Locale.US));
+        SimpleDateFormat format = new SimpleDateFormat("EEE, d MMM yyyy HH:mm:ss 'GMT'", Locale.US);
+        format.setTimeZone(TimeZone.getTimeZone("GMT"));
+        String dateString = format.format(new Date());
         builder
                 // 接受的返回类型，目前只支持JSON：application/json
                 .addHeader("Accept", "application/json")
@@ -114,9 +118,8 @@ public class PornVideoTest {
         builder
                 // 认证方式，取值格式为："acs" + " " + AccessKeyId + ":" + signature。其中AccessKeyId从阿里云控制台申请所得，而signature为请求签名。签名算法参见后面文档1.3说明。
                 // https://help.aliyun.com/document_detail/53415.html
-                // accessKey = LTAI8CTKiKducjvf / accessSecret =
-                .addHeader("Authorization", String.format("acs %s:%s", "LTAI8CTKiKducjvf",
-                        HmacSHA1Helper.encrypt(stringBuilder.toString(), "")));
+                .addHeader("Authorization", String.format("acs %s:%s", AppConstants.accessKey,
+                        HmacSHA1Helper.encrypt(stringBuilder.toString(), AppConstants.accessSecret)));
 
         Request request = builder.build();
 
@@ -128,9 +131,12 @@ public class PornVideoTest {
 
     @Test
     public void other() {
-        // Tue, 17 Jan 2017 10:16:36 GMT
-        // Tue, 13 Mar 2018 09:59:22 GMT
+        // Tue, 13 Mar 2018 15:23:59 GMT
         System.out.println(LocalDateTime.now().format(DateTimeFormatter.ofPattern("EEE, d MMM yyyy HH:mm:ss 'GMT'", Locale.US)));
+        // Tue, 13 Mar 2018 07:23:59 GMT
+        SimpleDateFormat format = new SimpleDateFormat("EEE, d MMM yyyy HH:mm:ss 'GMT'", Locale.US);
+        format.setTimeZone(TimeZone.getTimeZone("GMT"));
+        System.out.println(format.format(new Date()));
     }
 
 }
