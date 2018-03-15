@@ -8,10 +8,9 @@ import com.aliyuncs.DefaultAcsClient;
 import com.aliyuncs.IAcsClient;
 import com.aliyuncs.exceptions.ClientException;
 import com.aliyuncs.exceptions.ServerException;
-import com.aliyuncs.green.model.v20170112.VideoAsyncScanRequest;
+import com.aliyuncs.green.model.v20170112.VideoAsyncScanResultsRequest;
 import com.aliyuncs.http.FormatType;
 import com.aliyuncs.http.HttpResponse;
-import com.aliyuncs.http.MethodType;
 import com.aliyuncs.profile.DefaultProfile;
 import com.aliyuncs.profile.IClientProfile;
 import com.zlikun.open.consts.AppConstants;
@@ -25,24 +24,24 @@ import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
- * 视频异步扫描入口
+ * 视频异步扫描结果查询
  * @author zlikun <zlikun-dev@hotmail.com>
  * @date 2018-03-13 16:45
  */
 @Slf4j
-public class VideoAsyncScanMain {
+public class VideoAsyncResultsMain {
 
-    private static VideoAsyncScanMain INSTANCE;
+    private static VideoAsyncResultsMain INSTANCE;
 
     static {
         try {
-            INSTANCE = new VideoAsyncScanMain();
+            INSTANCE = new VideoAsyncResultsMain();
         } catch (ClientException e) {
             e.printStackTrace();
         } catch (IOException e) {
@@ -54,29 +53,30 @@ public class VideoAsyncScanMain {
 
         if (args.length != 2) {
             args = new String [] {
-                    "src/main/resources/data/video_url_exclude.txt",
-                    "src/main/resources/data/video_url_list.txt"
+                    "src/main/resources/data/video_url_tasks_exclude.txt",
+                    "src/main/resources/data/video_url_tasks.txt"
             };
         }
 
         // 获取排除列表集合 ( 已执行成功的任务 )
         Set<String> sets = Files.readAllLines(Paths.get(args[0]))
                 .stream()
-                .map(line -> StringUtils.substringAfterLast(line, ","))
+                // 三部分信息分别为：dataId,taskId,url，所以取第二部分
+                .map(line -> StringUtils.substringBetween(line, ",", ","))
                 .collect(Collectors.toSet());
 
         // 遍历链接数据文件
         final AtomicInteger counter = new AtomicInteger();
         Files.readAllLines(Paths.get(args[1]))
                 .stream()
-                .map(url -> StringUtils.trim(url))
-                .filter(url -> url != null && !sets.contains(url))
-                .forEach(url -> {
-                    log.info("Scan {} -> {}", counter.incrementAndGet(), url);
-                    scan(url);
-                    // 程序休眠一秒钟，保证一秒只提交一个任务
+                .map(line -> StringUtils.substringBetween(line, ",", ","))
+                .filter(taskId -> taskId != null && !sets.contains(taskId))
+                .forEach(taskId -> {
+                    log.info("Result {} -> {}", counter.incrementAndGet(), taskId);
+                    result(taskId);
+                    // 程序休眠500毫秒，控制任务提交速度
                     try {
-                        TimeUnit.SECONDS.sleep(1L);
+                        TimeUnit.MILLISECONDS.sleep(500L);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
@@ -86,28 +86,28 @@ public class VideoAsyncScanMain {
 
     /**
      * 执行任务
-     * @param url
+     * @param taskId
      */
-    private static final void scan(String url) {
+    private static final void result(String taskId) {
         for (int i = 0; i < 3; i++) {
             try {
-                scan(url, i);
+                result(taskId, i);
                 return;
             } catch (Exception e) {
                log.error("执行扫描任务出错!", e);
             }
         }
-        log.error("任务[{}]重试指定次数后，仍执行失败!", url);
+        log.error("任务[{}]重试指定次数后，仍执行失败!", taskId);
     }
 
     /**
      * 执行任务实际逻辑，记录重试逻辑
-     * @param url
+     * @param taskId
      * @param index
      */
-    private static final void scan(String url, int index) throws Exception {
+    private static final void result(String taskId, int index) throws Exception {
         if (index > 0) {
-            log.warn("任务[{}]重试第{}次~", url, index);
+            log.warn("任务[{}]重试第{}次~", taskId, index);
             // 重试时休眠重试次数秒，防止请求过快造成失败
             try {
                 TimeUnit.SECONDS.sleep(index);
@@ -116,7 +116,7 @@ public class VideoAsyncScanMain {
             }
         }
         // 实际执行逻辑
-        INSTANCE.execute(url);
+        INSTANCE.execute(taskId);
     }
 
     protected String regionId = "cn-shanghai";
@@ -126,7 +126,7 @@ public class VideoAsyncScanMain {
     protected IAcsClient client;
     private PrintWriter writer ;
 
-    public VideoAsyncScanMain() throws ClientException, IOException {
+    public VideoAsyncResultsMain() throws ClientException, IOException {
         IClientProfile profile = DefaultProfile.getProfile(regionId, AppConstants.accessKey, AppConstants.accessSecret);
         DefaultProfile.addEndpoint(endpoint, regionId, "Green", domain);
         client = new DefaultAcsClient(profile);
@@ -134,29 +134,17 @@ public class VideoAsyncScanMain {
     }
 
     /**
-     * 执行视频扫描任务
-     * @param url
+     * 执行视频扫描结果查询
+     * @param taskId
      */
-    private final void execute(String url) {
+    private final void execute(String taskId) {
 
-        // https://help.aliyun.com/document_detail/57420.html
-        VideoAsyncScanRequest request = new VideoAsyncScanRequest();
-        request.setMethod(MethodType.POST);
+        if (taskId == null) return;
 
-        List<Map<String, Object>> tasks = new ArrayList<>();
-        Map<String, Object> task = new LinkedHashMap<>();
-        task.put("dataId", StringUtils.replaceAll(UUID.randomUUID().toString(), "-", ""));
-        task.put("url", url);
-        // 每3秒扫描一次
-        task.put("interval", 5);
-        // 截帧最多张数
-        task.put("maxFrames", 60);
+        VideoAsyncScanResultsRequest request = new VideoAsyncScanResultsRequest();
 
-        tasks.add(task);
-
-        JSONObject data = new JSONObject();
-        data.put("scenes", Arrays.asList("porn"));
-        data.put("tasks", tasks);
+        JSONArray data = new JSONArray();
+        data.add(taskId);
 
         try {
             request.setContent(data.toJSONString().getBytes("UTF-8"), "UTF-8", FormatType.JSON);
@@ -165,17 +153,34 @@ public class VideoAsyncScanMain {
         }
 
         // 执行鉴黄请求
+        /* ---------------------------------------------------------------------------------------------------------
+        {
+            "msg":"OK",
+            "code":200,
+            "data":[
+                {
+                    "msg":"OK",
+                    "code":200,
+                    "dataId":"eceebcc16171481dbedf1439f23ce52d",
+                    "results":[
+                        {
+                            "rate":99.9,
+                            "suggestion":"pass",
+                            "label":"normal",
+                            "scene":"porn"
+                        }
+                    ],
+                    "taskId":"vi3J1kL1bKAfM57XbZceexEh-1oyukv",
+                    "url":"http://alivideo.zhihuishu.com/zhs/createcourse/COURSE/201708/afb9cad8908842068c28dbbf94b133c8_500.mp4"
+                }
+            ],
+            "requestId":"43C3C1D0-9C19-4441-BD57-0E5033A07D0C"
+        }
+        --------------------------------------------------------------------------------------------------------- */
         execute(request, jsonObject -> {
-            // 提取taskId字段
-            JSONArray array = jsonObject.getJSONArray("data");
-            if (array == null || array.isEmpty()) return;
-            JSONObject dataObject = array.getJSONObject(0);
-            // 记录任务信息，后续将根据任务，获取扫描结果
-            // 打印任务ID等信息
-            // dataId,taskId,url
-            print(dataObject.getString("dataId") +
-                    "," + dataObject.getString("taskId") +
-                    "," + dataObject.getString("url"));
+//            // 仅供调试使用
+//            System.out.println(JSON.toJSONString(jsonObject, true));
+            print(jsonObject.toJSONString());
         });
 
     }
