@@ -42,7 +42,7 @@ public class VideoAsyncTerrorismScanner {
 
     private static IAcsClient client;
     private static PrintWriter writer ;
-    private static long waitSeconds = 180L;  // 180L => 3分钟
+    private static long waitSeconds = 1L;  // 180L => 3分钟
 
     public static void main(String[] args) throws IOException, ClientException, InterruptedException {
 
@@ -159,7 +159,22 @@ public class VideoAsyncTerrorismScanner {
         RequestHelper.execute(client, request, jsonObject -> {
 //            // 仅供调试使用
 //            System.out.println(JSON.toJSONString(jsonObject, true));
-            print(jsonObject.toJSONString());
+
+            String json = jsonObject.toJSONString();
+            // 判断是否仍在扫描中，如果在，则递归重复扫
+            if (StringUtils.contains(json, "\"code\":280") && StringUtils.contains(json, "PROCESSING")) {
+                // 递归时，休眠3秒
+                try {
+                    TimeUnit.SECONDS.sleep(3L);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                result(taskId);
+                return;
+            }
+
+            // 将结果输出到文件
+            print(json);
         });
 
     }

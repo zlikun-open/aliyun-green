@@ -26,7 +26,7 @@ public class RequestHelper {
      * @param request
      * @param handler
      */
-    public static final void execute(IAcsClient client, AcsRequest request, ResponseHandler<JSONObject> handler) {
+    public static final JSONObject execute(IAcsClient client, AcsRequest request, ResponseHandler<JSONObject> handler) {
 
         // 指定API返回格式
         request.setAcceptFormat(FormatType.JSON);
@@ -43,6 +43,7 @@ public class RequestHelper {
                 JSONObject jsonObject = JSON.parseObject(new String(httpResponse.getContent(), "UTF-8"));
                 if (jsonObject != null) {
                     handler.handle(jsonObject);
+                    return jsonObject;
                 }
             } else {
                 log.warn("Response not success, status is {} .", httpResponse.getStatus());
@@ -54,6 +55,7 @@ public class RequestHelper {
         } catch (UnsupportedEncodingException e) {
             log.error("不支持的字符集!", e);
         }
+        return null;
     }
 
 }
