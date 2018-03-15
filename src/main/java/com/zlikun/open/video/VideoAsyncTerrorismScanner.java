@@ -138,6 +138,13 @@ public class VideoAsyncTerrorismScanner {
         if (taskId == null) return;
 //        log.info("taskId = {}", taskId);
 
+        // 每隔200毫秒执行一个请求
+        try {
+            TimeUnit.MILLISECONDS.sleep(200L);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
         VideoAsyncScanResultsRequest request = new VideoAsyncScanResultsRequest();
 
         JSONArray data = new JSONArray();
@@ -162,12 +169,25 @@ public class VideoAsyncTerrorismScanner {
      * @param url
      */
     private static final void check(String url) {
+        // 每隔200毫秒，最多执行一个任务
+        try {
+            TimeUnit.MILLISECONDS.sleep(200L);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        // 每个任务最多重试2次（共3次）
         for (int i = 0; i < 3; i++) {
             try {
                 scan(url);
                 return;
             } catch (Throwable t) {
                 log.warn("扫描[{}]失败{}次，消息：{}", url, i + 1, t.getMessage());
+                // 发生重试时，尝试扩大休眠时间
+                try {
+                    TimeUnit.SECONDS.sleep(i + 1L);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
         }
         // 重试三次，仍执行失败
