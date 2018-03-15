@@ -9,4 +9,8 @@ public interface AppConstants {
     String accessKey = "LTAI8CTKiKducjvf";
     String accessSecret = "";
 
+    String regionId = "cn-shanghai";
+    String endpoint = regionId;
+    String domain = "green.cn-shanghai.aliyuncs.com";
+
 }

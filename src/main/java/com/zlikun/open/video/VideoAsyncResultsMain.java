@@ -14,6 +14,7 @@ import com.aliyuncs.http.HttpResponse;
 import com.aliyuncs.profile.DefaultProfile;
 import com.aliyuncs.profile.IClientProfile;
 import com.zlikun.open.consts.AppConstants;
+import com.zlikun.open.helper.RequestHelper;
 import com.zlikun.open.helper.ResponseHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -119,16 +120,12 @@ public class VideoAsyncResultsMain {
         INSTANCE.execute(taskId);
     }
 
-    protected String regionId = "cn-shanghai";
-    protected String endpoint = regionId;
-    protected String domain = "green.cn-shanghai.aliyuncs.com";
-
     protected IAcsClient client;
     private PrintWriter writer ;
 
     public VideoAsyncResultsMain() throws ClientException, IOException {
-        IClientProfile profile = DefaultProfile.getProfile(regionId, AppConstants.accessKey, AppConstants.accessSecret);
-        DefaultProfile.addEndpoint(endpoint, regionId, "Green", domain);
+        IClientProfile profile = DefaultProfile.getProfile(AppConstants.regionId, AppConstants.accessKey, AppConstants.accessSecret);
+        DefaultProfile.addEndpoint(AppConstants.endpoint, AppConstants.regionId, "Green", AppConstants.domain);
         client = new DefaultAcsClient(profile);
         writer = new PrintWriter(new FileWriter("/tasks.log"));
     }
@@ -177,7 +174,7 @@ public class VideoAsyncResultsMain {
             "requestId":"43C3C1D0-9C19-4441-BD57-0E5033A07D0C"
         }
         --------------------------------------------------------------------------------------------------------- */
-        execute(request, jsonObject -> {
+        RequestHelper.execute(client, request, jsonObject -> {
 //            // 仅供调试使用
 //            System.out.println(JSON.toJSONString(jsonObject, true));
             print(jsonObject.toJSONString());
@@ -192,36 +189,6 @@ public class VideoAsyncResultsMain {
     private void print(String content) {
         writer.println(content);
         writer.flush();
-    }
-
-    private void execute(AcsRequest request, ResponseHandler<JSONObject> handler) {
-
-        // 指定API返回格式
-        request.setAcceptFormat(FormatType.JSON);
-        request.setContentType(FormatType.JSON);
-
-        // 请务必设置超时时间
-        request.setConnectTimeout(3000);
-        request.setReadTimeout(6000);
-
-        try {
-            HttpResponse httpResponse = client.doAction(request);
-
-            if (httpResponse.isSuccess()) {
-                JSONObject jsonObject = JSON.parseObject(new String(httpResponse.getContent(), "UTF-8"));
-                if (jsonObject != null) {
-                    handler.handle(jsonObject);
-                }
-            } else {
-                System.out.println("response not success. status:" + httpResponse.getStatus());
-            }
-        } catch (ServerException e) {
-            e.printStackTrace();
-        } catch (ClientException e) {
-            e.printStackTrace();
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-        }
     }
 
 }

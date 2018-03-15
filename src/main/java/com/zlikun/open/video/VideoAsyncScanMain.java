@@ -15,6 +15,7 @@ import com.aliyuncs.http.MethodType;
 import com.aliyuncs.profile.DefaultProfile;
 import com.aliyuncs.profile.IClientProfile;
 import com.zlikun.open.consts.AppConstants;
+import com.zlikun.open.helper.RequestHelper;
 import com.zlikun.open.helper.ResponseHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -119,16 +120,12 @@ public class VideoAsyncScanMain {
         INSTANCE.execute(url);
     }
 
-    protected String regionId = "cn-shanghai";
-    protected String endpoint = regionId;
-    protected String domain = "green.cn-shanghai.aliyuncs.com";
-
     protected IAcsClient client;
     private PrintWriter writer ;
 
     public VideoAsyncScanMain() throws ClientException, IOException {
-        IClientProfile profile = DefaultProfile.getProfile(regionId, AppConstants.accessKey, AppConstants.accessSecret);
-        DefaultProfile.addEndpoint(endpoint, regionId, "Green", domain);
+        IClientProfile profile = DefaultProfile.getProfile(AppConstants.regionId, AppConstants.accessKey, AppConstants.accessSecret);
+        DefaultProfile.addEndpoint(AppConstants.endpoint, AppConstants.regionId, "Green", AppConstants.domain);
         client = new DefaultAcsClient(profile);
         writer = new PrintWriter(new FileWriter("/tasks.log"));
     }
@@ -165,7 +162,7 @@ public class VideoAsyncScanMain {
         }
 
         // 执行鉴黄请求
-        execute(request, jsonObject -> {
+        RequestHelper.execute(client, request, jsonObject -> {
             // 提取taskId字段
             JSONArray array = jsonObject.getJSONArray("data");
             if (array == null || array.isEmpty()) return;
@@ -187,36 +184,6 @@ public class VideoAsyncScanMain {
     private void print(String content) {
         writer.println(content);
         writer.flush();
-    }
-
-    private void execute(AcsRequest request, ResponseHandler<JSONObject> handler) {
-
-        // 指定API返回格式
-        request.setAcceptFormat(FormatType.JSON);
-        request.setContentType(FormatType.JSON);
-
-        // 请务必设置超时时间
-        request.setConnectTimeout(3000);
-        request.setReadTimeout(6000);
-
-        try {
-            HttpResponse httpResponse = client.doAction(request);
-
-            if (httpResponse.isSuccess()) {
-                JSONObject jsonObject = JSON.parseObject(new String(httpResponse.getContent(), "UTF-8"));
-                if (jsonObject != null) {
-                    handler.handle(jsonObject);
-                }
-            } else {
-                System.out.println("response not success. status:" + httpResponse.getStatus());
-            }
-        } catch (ServerException e) {
-            e.printStackTrace();
-        } catch (ClientException e) {
-            e.printStackTrace();
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-        }
     }
 
 }
