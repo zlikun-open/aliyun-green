@@ -50,4 +50,18 @@ public class OtherTest {
 
     }
 
+    @Test
+    public void terrorism() throws IOException {
+        final AtomicInteger counter = new AtomicInteger();
+        Files.readAllLines(Paths.get("E:\\tmp\\video\\video_terrorism_results.log"))
+                .stream()
+                .filter(line -> line != null)
+                .filter(line -> !line.contains("[{\"rate\":99.9,\"suggestion\":\"pass\",\"label\":\"normal\",\"scene\":\"terrorism\"}]"))
+                .filter(line -> !line.contains("\"msg\":\"[content-length] should not be > 104857600\",\"code\":589,"))
+                .filter(line -> !line.contains("\"msg\":\"404 Not Found\",\"code\":480"))
+                .forEach(line -> {
+                    System.out.println(counter.incrementAndGet() + " -> " + line);
+                });
+    }
+
 }

@@ -42,7 +42,7 @@ public class VideoAsyncTerrorismScanner {
 
     private static IAcsClient client;
     private static PrintWriter writer ;
-    private static long waitSeconds = 1L;  // 180L => 3分钟
+    private static long waitSeconds = 180L;  // 180L => 3分钟
 
     public static void main(String[] args) throws IOException, ClientException, InterruptedException {
 
